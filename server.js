@@ -11,20 +11,14 @@ const pool = require('./db/pool');
 const app = express();
 const PORT = 3010;
 
-// ========== 双 API 配置 ==========
-// 主用 API：阿里云百炼（DashScope）万相 wanx-v1（异步模式）
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY || '';
-const DASHSCOPE_API_BASE = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis';
-const DASHSCOPE_MODEL = 'wanx-v1';
-const DASHSCOPE_TASK_API = 'https://dashscope.aliyuncs.com/api/v1/tasks';
-
-// 备用 API：open.mxapi.org gpt-image-2
-const MXAPI_API_KEY = process.env.GPT_IMAGE_API_KEY || '';
+// ========== API 配置 ==========
+// 唯一 API：open.mxapi.org gpt-image-2
+const MXAPI_API_KEY = 'QXND8S1NH1wHD6aU5fveYKD9aagvvjsS';
 const MXAPI_API_BASE = 'https://open.mxapi.org/api/v2/gpt-image-2';
 const MXAPI_TASK_API = 'https://open.mxapi.org/api/v2/gpt-image/task';
 
-// API 选择策略：dashscope | mxapi | auto（默认）
-const API_STRATEGY = process.env.API_STRATEGY || 'dashscope'; // 默认使用 DashScope
+// API 策略：固定 mxapi
+const API_STRATEGY = 'mxapi';
 
 // 上传目录
 const UPLOAD_DIR = path.join(__dirname, '../../uploads/product-image');
@@ -73,7 +67,6 @@ app.get('/health', (req, res) => {
         status: 'ok', 
         time: new Date().toISOString(),
         api_strategy: API_STRATEGY,
-        dashscope_available: !!DASHSCOPE_API_KEY,
         mxapi_available: !!MXAPI_API_KEY
     });
 });
@@ -152,76 +145,23 @@ function normalizeReferenceImages(urls) {
     });
 }
 
-// 尺寸映射
-function aspectToSize(aspect) {
-    const map = {
-        '1:1': '1024*1024',
-        '3:4': '768*1024',
-        '4:3': '1024*768',
-        '16:9': '1024*576',
-        '9:16': '576*1024',
-    };
-    return map[aspect] || '1024*1024';
-}
-
-// ========== 双 API 调用逻辑 ==========
-
-// 使用 DashScope 生成图片（异步模式，返回 task_id）
-async function generateWithDashScope(prompt, aspect_ratio, reference_images) {
-    const size = aspectToSize(aspect_ratio || '1:1');
-    const requestBody = {
-        model: DASHSCOPE_MODEL,
-        input: {
-            prompt: prompt
-        },
-        parameters: {
-            size: size,
-            n: 1
-        }
-    };
-    if (reference_images && reference_images.length > 0) {
-        requestBody.input.image = reference_images[0]; // DashScope 支持单张参考图
-    }
-
-    const response = await fetch(DASHSCOPE_API_BASE, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
-            'Content-Type': 'application/json',
-            'X-DashScope-Async': 'enable' // 异步模式
-        },
-        body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-    console.log('[DashScope] Response:', JSON.stringify(data).substring(0, 500));
-
-    if (data.output?.task_id) {
-        return {
-            code: 200,
-            message: 'success',
-            data: {
-                task_id: data.output.task_id,
-                status: 'pending',
-                provider: 'dashscope'
-            }
-        };
-    }
-
-    throw new Error(data.message || data.code || 'DashScope 未返回 task_id');
-}
+// ========== MXAPI 调用逻辑 ==========
 
 // 使用 MXAPI 生成图片（异步模式，返回 task_id）
-async function generateWithMxapi(prompt, aspect_ratio, reference_images) {
+async function generateWithMxapi(prompt, aspect_ratio, reference_images, resolution = '1K') {
     const requestBody = { 
         prompt, 
-        aspect_ratio: aspect_ratio || '1:1' 
+        aspect_ratio: aspect_ratio || '1:1',
+        quality: 'auto',
+        resolution: resolution
     };
     const normalizedRefs = normalizeReferenceImages(reference_images);
     if (normalizedRefs.length > 0) {
         requestBody.reference_images = normalizedRefs;
     }
 
+    console.log('[MXAPI] 请求参数:', JSON.stringify(requestBody));
+    
     const response = await fetch(MXAPI_API_BASE, {
         method: 'POST',
         headers: {
@@ -232,7 +172,7 @@ async function generateWithMxapi(prompt, aspect_ratio, reference_images) {
     });
 
     const data = await response.json();
-    console.log('[MXAPI] Response:', JSON.stringify(data).substring(0, 500));
+    console.log('[MXAPI] 响应:', JSON.stringify(data).substring(0, 500));
 
     if (data.data?.task_id) {
         return {
@@ -261,45 +201,19 @@ async function generateWithMxapi(prompt, aspect_ratio, reference_images) {
     throw new Error(data.message || 'MXAPI 未返回有效响应');
 }
 
-// 智能选择 API 并生成
-async function generateImage(prompt, aspect_ratio, reference_images, preferredProvider = 'mxapi') {
-    let provider = preferredProvider;
-    
-    // 自动选择策略：默认 MXAPI
-    if (provider === 'auto') {
-        provider = MXAPI_API_KEY ? 'mxapi' : 'dashscope';
+// 使用 MXAPI 生成图片
+async function generateImage(prompt, aspect_ratio, reference_images, resolution = '1K') {
+    if (!MXAPI_API_KEY) {
+        throw new Error('MXAPI API Key 未配置');
     }
-
-    try {
-        if (provider === 'dashscope' && DASHSCOPE_API_KEY) {
-            return await generateWithDashScope(prompt, aspect_ratio, reference_images);
-        } else if (provider === 'mxapi' && MXAPI_API_KEY) {
-            return await generateWithMxapi(prompt, aspect_ratio, reference_images);
-        } else {
-            throw new Error('没有可用的 API Key');
-        }
-    } catch (err) {
-        console.error(`[${provider}] 生成失败:`, err.message);
-        
-        // 自动故障切换（仅 auto 模式）
-        if (provider === 'dashscope' && MXAPI_API_KEY) {
-            console.log('[AUTO-FAILBACK] 切换到 MXAPI...');
-            try {
-                return await generateWithMxapi(prompt, aspect_ratio, reference_images);
-            } catch (err2) {
-                console.error('[MXAPI] 也失败了:', err2.message);
-            }
-        }
-        
-        throw err;
-    }
+    return await generateWithMxapi(prompt, aspect_ratio, reference_images, resolution);
 }
 
 // 提交生成任务（后端代理，隐藏 API Key）
 app.post('/api/generate', authenticateToken({ optional: true }), async (req, res) => {
-    const { prompt, aspect_ratio, reference_images, provider, save_history_only, image_url } = req.body;
+    const { prompt, aspect_ratio, reference_images, resolution, save_history_only, image_url } = req.body;
 
-    // 仅保存历史记录模式（前端已生成图片，只需保存到数据库）
+    // 仅保存历史记录模式
     if (save_history_only) {
         if (!req.user?.userId) {
             return res.status(401).json({ error: '请先登录' });
@@ -323,26 +237,8 @@ app.post('/api/generate', authenticateToken({ optional: true }), async (req, res
         return res.status(400).json({ error: '请输入商品描述' });
     }
 
-    // 检查 API Key
-    if (!DASHSCOPE_API_KEY && !MXAPI_API_KEY) {
-        return res.status(500).json({ error: 'API Key 未配置' });
-    }
-
     try {
-        // 选择 API：请求参数 > 环境变量 > 自动
-        const preferredProvider = provider || API_STRATEGY || 'auto';
-        
-        const result = await generateImage(prompt, aspect_ratio, reference_images, preferredProvider);
-
-        // 保存历史记录
-        const imageUrl = result.output?.image_url || result.data?.image_url || '';
-        if (imageUrl) {
-            await saveHistory(
-                req.user?.userId, prompt, imageUrl,
-                reference_images, aspect_ratio
-            );
-        }
-
+        const result = await generateImage(prompt, aspect_ratio, reference_images, resolution);
         res.json(result);
     } catch (err) {
         console.error('[GENERATE] Error:', err.message);
@@ -350,110 +246,93 @@ app.post('/api/generate', authenticateToken({ optional: true }), async (req, res
     }
 });
 
-// 查询任务状态（支持双 API）
+// 查询 MXAPI 任务状态
 app.get('/api/status', async (req, res) => {
-    const { task_id, provider } = req.query;
+    const { task_id } = req.query;
     
     if (!task_id) {
         return res.status(400).json({ error: '缺少 task_id' });
     }
 
-    // 根据 task_id 格式或显式参数判断 provider
-    let apiProvider = provider;
-    if (!apiProvider) {
-        // 使用配置的默认策略
-        apiProvider = API_STRATEGY || 'mxapi';
-    }
-
     try {
-        if (apiProvider === 'dashscope') {
-            const response = await fetch(`${DASHSCOPE_TASK_API}/${task_id}`, {
-                headers: {
-                    'Authorization': `Bearer ${DASHSCOPE_API_KEY}`
-                }
-            });
-            const data = await response.json();
-            console.log('[STATUS-DashScope] Response:', JSON.stringify(data).substring(0, 300));
-
-            // DashScope 返回：{ output: { task_status: 'SUCCEEDED'/'RUNNING'/'FAILED', results: [{ url: '...' }] } }
-            if (data.output?.task_status === 'SUCCEEDED') {
-                const imageUrl = data.output.results?.[0]?.url || '';
-                return res.json({
-                    code: 200,
-                    message: 'success',
-                    data: {
-                        status: 'completed',
-                        result: { images: [imageUrl] },
-                        provider: 'dashscope'
-                    },
-                    output: { image_url: imageUrl }
-                });
-            } else if (data.output?.task_status === 'FAILED' || data.output?.task_status === 'CANCELED') {
-                return res.json({
-                    code: 200,
-                    message: data.message || '生成失败',
-                    data: { status: 'failed', provider: 'dashscope' }
-                });
-            } else {
-                // PENDING / RUNNING
-                return res.json({
-                    code: 200,
-                    message: 'success',
-                    data: {
-                        status: 'pending',
-                        task_status: data.output?.task_status || 'PENDING',
-                        provider: 'dashscope'
-                    }
-                });
+        const response = await fetch(`${MXAPI_TASK_API}?task_id=${task_id}`, {
+            headers: {
+                'Authorization': `Bearer ${MXAPI_API_KEY}`
             }
+        });
+        const data = await response.json();
+        console.log('[STATUS-MXAPI] Response:', JSON.stringify(data).substring(0, 500));
+
+        if (data.data?.status === 'completed' || data.data?.status === 'SUCCEEDED') {
+            const mxapiImageUrl = data.data?.result?.images?.[0] || data.output?.image_url || '';
+            
+            // 下载MXAPI图片到本地
+            let localUrl = mxapiImageUrl;
+            try {
+                localUrl = await downloadToLocal(mxapiImageUrl, UPLOAD_DIR, 'generated');
+            } catch (e) {
+                console.error('[STATUS] 下载图片到本地失败:', e.message);
+            }
+            
+            return res.json({
+                code: 200,
+                message: 'success',
+                data: {
+                    status: 'completed',
+                    result: { images: [localUrl] },
+                    provider: 'mxapi'
+                },
+                output: { image_url: localUrl }
+            });
+        } else if (data.data?.status === 'failed' || data.data?.status === 'FAILED') {
+            return res.json({
+                code: 200,
+                message: data.message || '生成失败',
+                data: { status: 'failed', provider: 'mxapi' }
+            });
         } else {
-            // MXAPI
-            const response = await fetch(`${MXAPI_TASK_API}?task_id=${task_id}`, {
-                headers: {
-                    'Authorization': `Bearer ${MXAPI_API_KEY}`
+            return res.json({
+                code: 200,
+                message: 'success',
+                data: {
+                    status: 'pending',
+                    task_status: data.data?.status || 'pending',
+                    provider: 'mxapi'
                 }
             });
-            const data = await response.json();
-            console.log('[STATUS-MXAPI] Response:', JSON.stringify(data).substring(0, 300));
-
-            if (data.data?.status === 'completed') {
-                const imageUrl = data.data?.result?.images?.[0] || data.output?.image_url || '';
-                return res.json({
-                    code: 200,
-                    message: 'success',
-                    data: {
-                        status: 'completed',
-                        result: { images: [imageUrl] },
-                        provider: 'mxapi'
-                    },
-                    output: { image_url: imageUrl }
-                });
-            } else if (data.data?.status === 'failed') {
-                return res.json({
-                    code: 200,
-                    message: data.message || '生成失败',
-                    data: { status: 'failed', provider: 'mxapi' }
-                });
-            } else {
-                return res.json({
-                    code: 200,
-                    message: 'success',
-                    data: {
-                        status: 'pending',
-                        provider: 'mxapi'
-                    }
-                });
-            }
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
+// 下载远程图片到本地，返回本地URL
+async function downloadToLocal(imageUrl, saveDir, prefix) {
+    if (!imageUrl || imageUrl.startsWith('/uploads/') || imageUrl.includes('crazydream.site')) {
+        return imageUrl;
+    }
+    
+    const response = await fetch(imageUrl);
+    if (!response.ok) throw new Error(`下载图片失败: ${response.status}`);
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const ext = imageUrl.split('?')[0].split('.').pop()?.slice(0, 4) || 'png';
+    const filename = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+    
+    if (!fs.existsSync(saveDir)) {
+        fs.mkdirSync(saveDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(path.join(saveDir, filename), buffer);
+    const localUrl = `/uploads/product-image/${filename}`;
+    console.log('[downloadToLocal] 图片已保存:', localUrl);
+    return localUrl;
+}
+
 // ========== 千问 API 配置（提示词增强） ==========
 const QWEN_API_KEY = process.env.DASHSCOPE_API_KEY || '';
-const QWEN_API_ENDPOINT = process.env.DASHSCOPE_API_ENDPOINT || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
-const QWEN_MODEL = process.env.DASHSCOPE_MODEL || 'qwen-plus';
+const QWEN_API_ENDPOINT = 'https://open.mxapi.org/api/v2/gpt-image/enhance';
+const QWEN_MODEL = 'qwen-plus';
 
 // ========== 历史记录 ==========
 
@@ -751,8 +630,6 @@ prompt 要求：
 
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`Product Image Server running on port ${PORT}`);
-    console.log(`DashScope API: ${DASHSCOPE_API_KEY ? '✅ Loaded' : '❌ Missing'}`);
     console.log(`MXAPI API: ${MXAPI_API_KEY ? '✅ Loaded' : '❌ Missing'}`);
     console.log(`API Strategy: ${API_STRATEGY}`);
-    console.log(`千问 API: ${QWEN_API_KEY ? '✅ Loaded' : '❌ Missing'}`);
 });

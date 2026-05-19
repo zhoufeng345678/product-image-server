@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'product-image-server',
     script: 'server.js',
-    cwd: '/var/www/crazydream.site/app/product-image-server',
+    cwd: '/var/www/crazydream.site/app/product-image-server-git',
     env: {
       PORT: 3010,
       // 图片生成 API Keys
