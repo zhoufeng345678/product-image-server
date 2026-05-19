@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>商品主图生成器 | 材视 MaterialView</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>🎨 商品主图生成器</h1>
+            <div class="subtitle">Powered by gpt-image-2 | 材视 MaterialView</div>
+        </div>
+        <div class="header-right">
+            <div class="api-status" id="apiStatus">
+                <span class="api-status-dot checking" id="apiStatusDot"></span>
+                <span id="apiStatusText">检测中...</span>
+                <span id="quotaInfo" style="margin-left:4px;font-size:11px;opacity:0.7;"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 左侧面板 -->
+        <div class="left-panel">
+            <div class="panel-tabs">
+                <button class="panel-tab active" onclick="switchTab('generate')">生成图片</button>
+                <button class="panel-tab" onclick="switchTab('history')">历史记录</button>
+            </div>
+
+            <!-- 生成面板 -->
+            <div class="panel-content" id="tab-generate">
+                <div class="prompt-section">
+                    <div class="prompt-label">📝 描述你的商品</div>
+                    <textarea class="prompt-input" id="promptInput" placeholder="例如：白色陶瓷花瓶，简约北欧风格，放在原木桌面上..."></textarea>
+
+                    <button class="enhance-btn" onclick="enhancePrompt()">✨ 智能增强提示词</button>
+
+                    <div class="aspect-section">
+                        <div class="aspect-label">📐 图片比例</div>
+                        <div class="aspect-options">
+                            <button class="aspect-btn active" data-ratio="1:1" onclick="selectAspect(this)">1:1</button>
+                            <button class="aspect-btn" data-ratio="3:4" onclick="selectAspect(this)">3:4</button>
+                            <button class="aspect-btn" data-ratio="4:3" onclick="selectAspect(this)">4:3</button>
+                            <button class="aspect-btn" data-ratio="16:9" onclick="selectAspect(this)">16:9</button>
+                            <button class="aspect-btn" data-ratio="9:16" onclick="selectAspect(this)">9:16</button>
+                        </div>
+                    </div>
+
+                    <button class="generate-btn" id="generateBtn" onclick="generateImage()">🚀 生成主图</button>
+                    <div id="errorMsg"></div>
+                </div>
+            </div>
+
+            <!-- 历史面板 -->
+            <div class="panel-content" id="tab-history" style="display:none;">
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">暂无历史记录</div>
+                </div>
+            </div>
+
+            <!-- API Key 设置 -->
+            <div class="api-key-section">
+                <div class="api-key-row">
+                    <input type="password" class="api-key-input" id="apiKeyInput" placeholder="输入 API Key..." />
+                    <button class="api-key-save" onclick="saveApiKey()">保存</button>
+                </div>
+                <div class="provider-row">
+                    <span>供应商：</span>
+                    <select class="provider-select" id="providerSelect" onchange="switchProvider()">
+                        <option value="mxapi">MXAPI (open.mxapi.org)</option>
+                        <option value="dashscope">阿里云百炼 (DashScope)</option>
+                    </select>
+                    <span class="provider-switching" id="providerSwitching">切换中...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧展示区 -->
+        <div class="right-panel">
+            <div class="image-display" id="imageDisplay">
+                <div class="placeholder">
+                    <div class="placeholder-icon">🖼️</div>
+                    <div class="placeholder-text">输入商品描述，点击生成<br>AI 将为你创建电商主图</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 模块加载 -->
+    <script src="js/config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
