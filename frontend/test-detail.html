@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>测试详情页API</title>
+    <script>
+        async function testDetailAPI() {
+            const API_BASE = '/app/product-image/api';
+            const productData = {
+                productName: '银色金属减压阀',
+                category: '工业配件',
+                sellingPoints: '高精度、耐腐蚀、长寿命',
+                material: '不锈钢',
+                size: '127mm',
+                style: '工业风格',
+                referenceStyle: '现代简约'
+            };
+            
+            try {
+                const response = await fetch(API_BASE + '/detail-prompts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(productData)
+                });
+                
+                const data = await response.json();
+                console.log('响应:', data);
+                
+                if (response.status === 200) {
+                    document.getElementById('result').innerHTML = 
+                        '<div style="color: green;">✅ API调用成功！</div>' +
+                        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('result').innerHTML = 
+                        '<div style="color: red;">❌ API调用失败：' + data.error + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<div style="color: red;">❌ 请求失败：' + error.message + '</div>';
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>测试详情页API</h1>
+    <button onclick="testDetailAPI()">测试API</button>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc;"></div>
+</body>
+</html>

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>电商图片生成器 | 材视 MaterialView</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Arial, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            min-height: 100vh;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        /* ========== 顶部导航栏 ========== */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 17px; font-weight: 600; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .auth-btn-header {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+
+        /* ========== 底部导航栏 ========== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            border-top: 1px solid #e5e5e7;
+            z-index: 100;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            color: #86868b;
+            font-size: 11px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .nav-item.active { color: #667eea; }
+        .nav-icon { font-size: 22px; }
+
+        /* ========== 主内容区 ========== */
+        .main-content {
+            padding: 16px;
+            padding-bottom: 80px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* ========== 卡片样式 ========== */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ========== 输入框 ========== */
+        .prompt-input {
+            width: 100%;
+            min-height: 120px;
+            padding: 14px;
+            border: 2px solid #e5e5e7;
+            border-radius: 12px;
+            font-size: 15px;
+            line-height: 1.6;
+            resize: vertical;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+        .prompt-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+        }
+
+        /* ========== 按钮 ========== */
+        .btn-primary {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(102,126,234,0.3);
+        }
+        .btn-primary:active { transform: scale(0.98); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            padding: 12px 20px;
+            background: #f5f5f7;
+            color: #1d1d1f;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-secondary:active { background: #e5e5e7; }
+
+        /* ========== 选项组 ========== */
+        .option-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .option-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 12px 8px;
+            border: 2px solid #e5e5e7;
+            border-radius: 10px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .option-btn:active { transform: scale(0.96); }
+        .option-btn.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+        }
+
+        /* ========== 上传区域 ========== */
+        .upload-area {
+            border: 2px dashed #d2d2d7;
+            border-radius: 12px;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s;
+            background: #fafafa;
+        }
+        .upload-area:active {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        .upload-icon { font-size: 36px; margin-bottom: 8px; }
+        .upload-text { font-size: 14px; color: #86868b; }
+        .upload-hint { font-size: 12px; color: #aeaeb2; margin-top: 4px; }
+        .upload-input { display: none; }
+
+        /* ========== 图片网格 ========== */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .image-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f5f5f7;
+        }
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-item .remove-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(255,59,48,0.95);
+            color: white;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ========== 图片展示区 ========== */
+        .image-show-container {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .image-show-container.active { display: flex; }
+        .image-show-container img {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+        .image-show-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 12px;
+            padding: 0 16px;
+        }
+        .image-show-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        /* ========== 加载动画 ========== */
+        .loading-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e5e7;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 15px; color: #86868b; margin-bottom: 8px; }
+        .loading-subtext { font-size: 13px; color: #aeaeb2; }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e5e5e7;
+            border-radius: 3px;
+            margin: 16px 0 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        /* ========== Toast 通知 ========== */
+        .toast-container {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+        .toast {
+            background: rgba(0,0,0,0.85);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            animation: toast-in 0.3s ease-out;
+            pointer-events: auto;
+        }
+        @keyframes toast-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ========== 历史记录 ========== */
+        .history-list { display: flex; flex-direction: column; gap: 10px; }
+        .history-item {
+            background: white;
+            border-radius: 12px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .history-prompt { font-size: 14px; line-height: 1.5; margin-bottom: 8px; }
+        .history-meta { font-size: 12px; color: #86868b; display: flex; justify-content: space-between; }
+
+        /* ========== 空状态 ========== */
+        .empty-state {
+            text-align: center;
+            color: #86868b;
+            padding: 60px 20px;
+        }
+        .empty-icon { font-size: 60px; margin-bottom: 16px; opacity: 0.5; }
+
+        /* ========== 页面切换 ========== */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* ========== 登录弹窗 ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 400;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 340px;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; text-align: center; }
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e5e5e7;
+            border-radius: 10px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus { outline: none; border-color: #667eea; }
+        .modal-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .modal-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            background: #f5f5f7;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .modal-tab.active { background: #667eea; color: white; }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <header class="header">
+        <h1>🎨 电商图片生成器</h1>
+        <div class="header-actions">
+            <button class="auth-btn-header" id="authBtn" onclick="showAuthModal()">登录</button>
+        </div>
+    </header>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        <!-- 生成页面 -->
+        <div class="page active" id="page-generate">
+            <!-- 提示词卡片 -->
+            <div class="card">
+                <div class="card-title">📝 商品描述</div>
+                <textarea class="prompt-input" id="promptInput" placeholder="例如：白色陶瓷花瓶，简约北欧风格，放在原木桌面上，柔和自然光，专业产品摄影"></textarea>
+                <button class="btn-secondary" style="width:100%;margin-top:10px;" onclick="enhancePrompt()">✨ 智能增强提示词</button>
+            </div>
+
+            <!-- 参数卡片 -->
+            <div class="card">
+                <div class="card-title">⚙️ 图片比例</div>
+                <div class="option-group">
+                    <button class="option-btn active" onclick="selectAspect(this,'1:1')">1:1</button>
+                    <button class="option-btn" onclick="selectAspect(this,'3:4')">3:4</button>
+                    <button class="option-btn" onclick="selectAspect(this,'16:9')">16:9</button>
+                    <button class="option-btn" onclick="selectAspect(this,'9:16')">9:16</button>
+                </div>
+            </div>
+
+            <!-- 参考图卡片 -->
+            <div class="card">
+                <div class="card-title">🖼️ 参考图（可选）</div>
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">点击上传图片</div>
+                    <div class="upload-hint">JPG/PNG/WEBP，最多 5 张</div>
+                </div>
+                <input type="file" id="fileInput" class="upload-input" accept="image/*" multiple onchange="handleFileSelect(event)">
+                <div class="image-grid" id="uploadedImages"></div>
+            </div>
+
+            <!-- 生成按钮 -->
+            <button class="btn-primary" id="generateBtn" onclick="generateImage()">🚀 生成图片</button>
+            <div id="errorMsg" style="margin-top:12px;color:#ff3b30;font-size:14px;text-align:center;"></div>
+        </div>
+
+        <!-- 历史页面 -->
+        <div class="page" id="page-history">
+            <div class="card">
+                <div class="card-title">📜 历史记录</div>
+                <div class="history-list" id="historyList">
+                    <div class="empty-state">
+                        <div class="empty-icon">📭</div>
+                        <div>暂无历史记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的页面 -->
+        <div class="page" id="page-profile">
+            <div class="card" id="profileCard">
+                <div class="card-title">👤 用户信息</div>
+                <div style="text-align:center;padding:20px;color:#86868b;">
+                    未登录
+                </div>
+                <button class="btn-primary" onclick="showAuthModal()">立即登录</button>
+            </div>
+            <div class="card">
+                <div class="card-title">ℹ️ 使用说明</div>
+                <div style="font-size:14px;line-height:1.8;color:#666;">
+                    1. 输入商品描述<br>
+                    2. 选择图片比例<br>
+                    3. 上传参考图（可选）<br>
+                    4. 点击生成按钮<br>
+                    5. 等待 30-60 秒<br>
+                    6. 下载生成的图片
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchPage('generate',this)">
+            <div class="nav-icon">🎨</div>
+            <div>生成</div>
+        </div>
+        <div class="nav-item" onclick="switchPage('history',this)">
+            <div class="nav-icon">📜</div>
+            <div>历史</div>
+        </div>
+        <div class="nav-item" onclick="switchPage('profile',this)">
+            <div class="nav-icon">👤</div>
+            <div>我的</div>
+        </div>
+    </nav>
+
+    <!-- 图片展示弹窗 -->
+    <div class="image-show-container" id="imageShowContainer" onclick="closeImageShow(event)">
+        <button class="image-show-close" onclick="closeImageShow()">✕</button>
+        <img id="imageShowImg" src="" alt="生成的图片">
+        <div class="image-show-actions">
+            <button class="btn-primary" style="flex:1;max-width:200px;" onclick="downloadCurrentImage()">💾 下载</button>
+        </div>
+    </div>
+
+    <!-- 登录弹窗 -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal" style="position:relative;">
+            <button class="modal-close" onclick="closeAuthModal()">✕</button>
+            <div class="modal-title">欢迎登录</div>
+            <div class="modal-tabs">
+                <div class="modal-tab active" onclick="switchAuthTab('login')">登录</div>
+                <div class="modal-tab" onclick="switchAuthTab('register')">注册</div>
+            </div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <input class="form-input" type="text" id="loginUsername" placeholder="用户名" required>
+                <input class="form-input" type="password" id="loginPassword" placeholder="密码" required>
+                <button type="submit" class="btn-primary">登录</button>
+            </form>
+            <form id="registerForm" onsubmit="handleRegister(event)" style="display:none;">
+                <input class="form-input" type="text" id="regUsername" placeholder="用户名（3-20 字符）" required>
+                <input class="form-input" type="password" id="regPassword" placeholder="密码（6-50 字符）" required>
+                <input class="form-input" type="text" id="regNickname" placeholder="昵称" required>
+                <button type="submit" class="btn-primary">注册</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/app/product-image/api';
+        let currentAspectRatio = '1:1';
+        let uploadedFiles = [];
+        let currentImageUrl = '';
+        let draftTimer = null;
+
+        const AuthService = {
+            getToken: () => localStorage.getItem('product-image-token'),
+            setToken: (token) => localStorage.setItem('product-image-token', token),
+            removeToken: () => localStorage.removeItem('product-image-token'),
+            isLoggedIn: () => !!AuthService.getToken(),
+            fetch: async (url, options = {}) => {
+                const token = AuthService.getToken();
+                const headers = { ...options.headers };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+                const response = await fetch(url, { ...options, headers });
+                return response;
+            }
+        };
+
+        // 页面切换
+        function switchPage(page, navItem) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if (navItem) navItem.classList.add('active');
+            if (page === 'history') loadHistory();
+            if (page === 'profile') updateProfile();
+        }
+
+        // 选择比例
+        function selectAspect(btn, ratio) {
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentAspectRatio = ratio;
+        }
+
+        // 文件上传
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadedFiles.push({ url: e.target.result, name: file.name });
+                    renderUploadedImages();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderUploadedImages() {
+            const container = document.getElementById('uploadedImages');
+            container.innerHTML = uploadedFiles.map((f, i) => `
+                <div class="image-item">
+                    <img src="${f.url}" alt="${f.name}">
+                    <button class="remove-btn" onclick="removeUploadedFile(${i})">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function removeUploadedFile(index) {
+            uploadedFiles.splice(index, 1);
+            renderUploadedImages();
+        }
+
+        // 生成图片
+        async function generateImage() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) {
+                showToast('请输入商品描述', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 生成中...';
+
+            try {
+                const response = await AuthService.fetch(API_BASE + '/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        aspect_ratio: currentAspectRatio,
+                        reference_images: uploadedFiles.length > 0 ? uploadedFiles.map(f => f.url) : undefined
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.data?.task_id && !data.output?.image_url) {
+                    throw new Error(data.message || '生成失败');
+                }
+
+                const taskId = data.data?.task_id;
+                if (taskId) {
+                    // 轮询任务状态
+                    const imageUrl = await pollTask(taskId);
+                    showResult(imageUrl, prompt);
+                } else {
+                    const imageUrl = data.output.image_url;
+                    showResult(imageUrl, prompt);
+                }
+            } catch (err) {
+                showToast('生成失败：' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 生成图片';
+            }
+        }
+
+        async function pollTask(taskId) {
+            return new Promise((resolve, reject) => {
+                const start = Date.now();
+                const maxTime = 120000; // 2 分钟
+                const timer = setInterval(async () => {
+                    if (Date.now() - start > maxTime) {
+                        clearInterval(timer);
+                        reject(new Error('生成超时'));
+                        return;
+                    }
+                    try {
+                        const response = await AuthService.fetch(API_BASE + '/status?task_id=' + taskId);
+                        const data = await response.json();
+                        if (data.data?.status === 'completed') {
+                            clearInterval(timer);
+                            const imageUrl = data.data?.result?.images?.[0] || data.output?.image_url;
+                            resolve(imageUrl);
+                        } else if (data.data?.status === 'failed') {
+                            clearInterval(timer);
+                            reject(new Error(data.message || '生成失败'));
+                        }
+                    } catch (err) {
+                        console.error('轮询失败:', err);
+                    }
+                }, 3000);
+            });
+        }
+
+        function showResult(imageUrl, prompt) {
+            currentImageUrl = imageUrl;
+            document.getElementById('imageShowImg').src = imageUrl;
+            document.getElementById('imageShowContainer').classList.add('active');
+            saveToHistory(prompt, imageUrl);
+            showToast('生成成功！', 'success');
+        }
+
+        function closeImageShow(event) {
+            if (!event || event.target === document.getElementById('imageShowContainer')) {
+                document.getElementById('imageShowContainer').classList.remove('active');
+            }
+        }
+
+        function downloadCurrentImage() {
+            if (!currentImageUrl) return;
+            const a = document.createElement('a');
+            a.href = currentImageUrl;
+            a.download = 'product-image-' + Date.now() + '.png';
+            a.target = '_blank';
+            a.click();
+            showToast('开始下载...', 'success');
+        }
+
+        function saveToHistory(prompt, imageUrl) {
+            const history = JSON.parse(localStorage.getItem('gpt_image_history') || '[]');
+            history.unshift({
+                id: Date.now(),
+                prompt: prompt,
+                imageUrl: imageUrl,
+                aspect: currentAspectRatio,
+                time: new Date().toLocaleString('zh-CN')
+            });
+            if (history.length > 50) history.pop();
+            localStorage.setItem('gpt_image_history', JSON.stringify(history));
+        }
+
+        function loadHistory() {
+            const container = document.getElementById('historyList');
+            const history = JSON.parse(localStorage.getItem('gpt_image_history') || '[]');
+            if (history.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><div>暂无历史记录</div></div>';
+                return;
+            }
+            container.innerHTML = history.map(item => `
+                <div class="history-item" onclick="viewHistoryItem('${item.imageUrl}', '${item.prompt.replace(/'/g, "\\'")}')">
+                    <div class="history-prompt">${item.prompt}</div>
+                    <div class="history-meta">
+                        <span>${item.time} · ${item.aspect}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewHistoryItem(imageUrl, prompt) {
+            currentImageUrl = imageUrl;
+            document.getElementById('imageShowImg').src = imageUrl;
+            document.getElementById('imageShowContainer').classList.add('active');
+        }
+
+        function updateProfile() {
+            const card = document.getElementById('profileCard');
+            if (AuthService.isLoggedIn()) {
+                // 获取用户信息
+                AuthService.fetch(API_BASE + '/auth/me').then(r => r.json()).then(data => {
+                    if (data.code === 200) {
+                        card.innerHTML = `
+                            <div class="card-title">👤 用户信息</div>
+                            <div style="text-align:center;padding:20px;">
+                                <div style="font-size:18px;font-weight:600;margin-bottom:4px;">${data.data.nickname || data.data.username}</div>
+                                <div style="color:#86868b;font-size:14px;">${data.data.username}</div>
+                            </div>
+                            <button class="btn-secondary" style="width:100%;" onclick="handleLogout()">退出登录</button>
+                        `;
+                    }
+                });
+            }
+        }
+
+        // 认证相关
+        function showAuthModal() { document.getElementById('authModal').classList.add('active'); }
+        function closeAuthModal() { document.getElementById('authModal').classList.remove('active'); }
+
+        function switchAuthTab(tab) {
+            document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+            document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            try {
+                const res = await fetch(API_BASE + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    AuthService.setToken(data.data.token);
+                    closeAuthModal();
+                    showToast('登录成功', 'success');
+                    updateProfile();
+                } else {
+                    showToast(data.message || '登录失败', 'error');
+                }
+            } catch (err) {
+                showToast('网络错误', 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
+            const nickname = document.getElementById('regNickname').value;
+            try {
+                const res = await fetch(API_BASE + '/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, nickname })
+                });
+                const data = await res.json();
+                if (data.code === 200) {
+                    showToast('注册成功，请登录', 'success');
+                    switchAuthTab('login');
+                } else {
+                    showToast(data.message || '注册失败', 'error');
+                }
+            } catch (err) {
+                showToast('网络错误', 'error');
+            }
+        }
+
+        function handleLogout() {
+            AuthService.removeToken();
+            showToast('已退出登录', 'success');
+            updateProfile();
+        }
+
+        // 提示词增强
+        async function enhancePrompt() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) {
+                showToast('请输入商品描述', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(API_BASE + '/enhance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const data = await res.json();
+                if (data.code === 200 && data.data?.enhanced) {
+                    document.getElementById('promptInput').value = data.data.enhanced;
+                    showToast('提示词已增强', 'success');
+                }
+            } catch (err) {
+                showToast('增强失败', 'error');
+            }
+        }
+
+        // Toast
+        function showToast(message, type) { return; // Disabled return; // 已禁用
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.animation = 'toast-in 0.3s ease-out reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // 自动保存草稿
+        document.addEventListener('DOMContentLoaded', () => {
+            const promptInput = document.getElementById('promptInput');
+            promptInput.addEventListener('input', () => {
+                clearTimeout(draftTimer);
+                draftTimer = setTimeout(() => {
+                    localStorage.setItem('product-image-draft', promptInput.value);
+                }, 2000);
+            });
+            // 恢复草稿
+            const draft = localStorage.getItem('product-image-draft');
+            if (draft) promptInput.value = draft;
+        });
+    </script>
+</body>
+</html>

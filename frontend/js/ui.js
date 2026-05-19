@@ -74,6 +74,19 @@ var UI = {
         currentAspectRatio = btn.dataset.ratio;
     },
 
+    // === 分辨率选择 ===
+    selectResolution: function(btn) {
+        // 只操作同一组内的分辨率按钮
+        var parent = btn.closest('.resolution-section') || btn.closest('.aspect-options').parentElement;
+        if (parent) {
+            parent.querySelectorAll('.aspect-btn').forEach(function(b) { b.classList.remove('active'); });
+        }
+        btn.classList.add('active');
+        currentResolution = btn.dataset.resolution;
+        // 保存到本地存储
+        Storage.setResolution(currentResolution);
+    },
+
     // === 提示词增强 ===
     enhancePrompt: function() {
         var input = document.getElementById('promptInput');

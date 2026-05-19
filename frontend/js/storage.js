@@ -22,6 +22,14 @@ var Storage = {
         localStorage.setItem('gpt_image_provider', provider);
     },
 
+    // === Resolution ===
+    getResolution: function() {
+        return localStorage.getItem('gpt_image_resolution') || '1K';
+    },
+    setResolution: function(resolution) {
+        localStorage.setItem('gpt_image_resolution', resolution);
+    },
+
     // === Draft (P1-6: 草稿自动恢复) ===
     getDraft: function() {
         return localStorage.getItem('gpt_image_draft') || '';

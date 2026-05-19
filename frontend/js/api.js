@@ -163,7 +163,7 @@ var Api = {
                 var response = await fetch(cfg.submitUrl, {
                     method: 'POST',
                     headers: headers,
-                    body: JSON.stringify(cfg.submitBody(prompt, currentAspectRatio)),
+                    body: JSON.stringify(cfg.submitBody(prompt, currentAspectRatio, currentResolution)),
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);

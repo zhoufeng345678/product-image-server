@@ -2,4 +2,5 @@ node_modules/
 *.log
 *.backup
 .env
+.env.example.bak
 .DS_Store

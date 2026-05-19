@@ -44,6 +44,11 @@
     });
 
     function initApp() {
+        // 初始化配置（包括分辨率设置）
+        if (typeof initConfig === 'function') {
+            initConfig();
+        }
+        
         // 恢复 API Key
         var savedKey = Storage.getApiKey();
         if (savedKey) {
